@@ -3,111 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ReOrg Médico PRO - Estável</title>
+    <title>ReOrg Médico - Sistema Estável</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --blue: #58a6ff; --green: #238636; --text: #e6edf3; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3; --blue: #58a6ff; --green: #238636; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        h2 { color: var(--blue); margin-top: 0; font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 12px; color: #8b949e; text-transform: uppercase; }
-        textarea { width: 100%; height: 200px; background: #010409; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; margin-bottom: 20px; }
-        input[type="file"] { background: #0d1117; border: 1px solid var(--border); padding: 10px; width: 100%; border-radius: 6px; box-sizing: border-box; cursor: pointer; }
-        .btn { cursor: pointer; border: none; padding: 15px; border-radius: 6px; font-weight: bold; width: 100%; font-size: 13px; text-transform: uppercase; transition: 0.2s; margin-top: 10px; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 200px; background: #010409; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+        .btn { cursor: pointer; border: none; padding: 15px; border-radius: 6px; font-weight: bold; width: 100%; transition: 0.2s; margin-top: 15px; font-size: 14px; }
         .btn-primary { background: var(--blue); color: #0d1117; }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-success { background: var(--green); color: white; display: none; }
-        #status { margin-top: 15px; padding: 12px; border-radius: 6px; font-size: 13px; background: #010409; border-left: 4px solid var(--border); }
+        #status { margin-top: 15px; font-size: 13px; min-height: 40px; border-left: 3px solid var(--border); padding-left: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>⚡ ReOrg Médico PRO</h2>
+        <h2 style="color: var(--blue); margin-top: 0;">⚡ ReOrg Médico PRO</h2>
+        <p style="font-size: 12px; color: #8b949e;">Processamento via Gemini 1.5 Flash (v1 Estável)</p>
         
-        <label>1. Modelo Padrão de Evolução</label>
-        <textarea id="modeloText" placeholder="Cole aqui o seu modelo de referência..."></textarea>
+        <label style="display:block; margin-bottom:10px; font-weight:bold;">1. MODELO PADRÃO</label>
+        <textarea id="modeloText" placeholder="Cole o modelo de referência aqui..."></textarea>
         
-        <label>2. Selecionar Evoluções (.txt)</label>
+        <label style="display:block; margin-top:20px; margin-bottom:10px; font-weight:bold;">2. SELECIONAR ARQUIVOS (.TXT)</label>
         <input type="file" id="fileInput" multiple accept=".txt">
     </div>
 
     <div class="card">
-        <div id="status">Aguardando arquivos e comando...</div>
-        <button class="btn btn-primary" id="btnRun">🚀 Iniciar Reorganização em Lote</button>
-        <button class="btn btn-success" id="btnZip">📥 Baixar Arquivos Reorganizados (.ZIP)</button>
+        <div id="status">Aguardando comando...</div>
+        <button class="btn btn-primary" id="btnRun">🚀 REORGANIZAR EVOLUÇÕES</button>
+        <button class="btn btn-success" id="btnZip">📥 BAIXAR TUDO (.ZIP)</button>
     </div>
 </div>
 
 <script>
-    // CHAVE API INTEGRADA DIRETAMENTE
-    const KEY_BASE = "AIzaSyAuaKdXTRfZzuabGO4UupW2qj5EnQcbaG4";
+    // CHAVE API INTEGRADA - SEM ESPAÇOS OU CARACTERES ESPECIAIS
+    const MINHA_CHAVE = "AIzaSyAuaKdXTRfZzuabGO4UupW2qj5EnQcbaG4";
 
     const btnRun = document.getElementById('btnRun');
     const btnZip = document.getElementById('btnZip');
     const status = document.getElementById('status');
-    let resultsList = [];
+    let finalResults = [];
 
     btnRun.onclick = async () => {
         const files = document.getElementById('fileInput').files;
         const modelo = document.getElementById('modeloText').value;
 
         if (files.length === 0 || !modelo) {
-            alert("Por favor, selecione os arquivos e cole o modelo padrão.");
+            alert("Selecione os arquivos e preencha o modelo.");
             return;
         }
 
         btnRun.disabled = true;
         btnZip.style.display = "none";
-        resultsList = [];
+        finalResults = [];
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            status.innerHTML = `⚙️ Processando (${i+1}/${files.length}): <b>${file.name}</b>`;
+            status.innerHTML = `⚙️ Processando ${i+1}/${files.length}: <b>${file.name}</b>`;
             
             try {
                 const text = await file.text();
-                // Usando a versão v1 (Estável) e o modelo flash direto
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${KEY_BASE}`;
+                
+                // MUDANÇA CRUCIAL: Usando a versão 'v1' estável e o endpoint direto
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${MINHA_CHAVE}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Aja como médico assistente. Reorganize a evolução abaixo seguindo rigorosamente o modelo fornecido.\n\nMODELO:\n${modelo}\n\nEVOLUÇÃO:\n${text}` }] }]
+                        contents: [{ parts: [{ text: `Aja como médico assistente de UTI. Reorganize a evolução abaixo seguindo rigorosamente o modelo.\n\nMODELO:\n${modelo}\n\nEVOLUÇÃO:\n${text}` }] }]
                     })
                 });
 
                 const data = await response.json();
 
-                if (response.ok && data.candidates && data.candidates[0].content) {
-                    resultsList.push({ 
-                        name: `REORG_${file.name}`, 
-                        content: data.candidates[0].content.parts[0].text 
-                    });
+                if (response.ok && data.candidates) {
+                    finalResults.push({ name: `REORG_${file.name}`, content: data.candidates[0].content.parts[0].text });
                 } else {
-                    const errorMsg = data.error ? data.error.message : "Resposta inesperada da API.";
-                    throw new Error(errorMsg);
+                    const msg = data.error ? data.error.message : "Erro desconhecido na API";
+                    throw new Error(msg);
                 }
-
             } catch (err) {
+                status.innerHTML = `<span style="color:#f78166">❌ Falha em ${file.name}: ${err.message}</span>`;
                 console.error(err);
-                status.innerHTML = `<span style="color:#f78166">❌ Erro no arquivo ${file.name}: ${err.message}</span>`;
                 btnRun.disabled = false;
                 return;
             }
         }
 
-        status.innerHTML = `<b style="color: var(--green)">✅ Concluído! ${resultsList.length} arquivos processados com sucesso.</b>`;
+        status.innerHTML = `<b style="color: var(--green)">✅ Sucesso! ${finalResults.length} arquivos prontos.</b>`;
         btnZip.style.display = "block";
         btnRun.disabled = false;
     };
 
     btnZip.onclick = async () => {
         const zip = new JSZip();
-        resultsList.forEach(f => zip.file(f.name, f.content));
+        finalResults.forEach(f => zip.file(f.name, f.content));
         const blob = await zip.generateAsync({ type: "blob" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -115,6 +109,5 @@
         a.click();
     };
 </script>
-
 </body>
 </html>
