@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>ReOrg Médico - UTI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3; --blue: #58a6ff; --green: #238636; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        textarea { width: 100%; height: 200px; background: #010409; color: white; border: 1px solid var(--border); border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        .btn { cursor: pointer; border: none; padding: 12px; border-radius: 6px; font-weight: bold; width: 100%; margin-top: 10px; }
+        .btn-primary { background: var(--blue); color: #0d1117; }
+        .btn-success { background: var(--green); color: white; }
+        #status { margin-top: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>ReOrg Médico ⚡</h2>
+    <div class="card">
+        <label>1. Modelo Padrão</label>
+        <textarea id="modeloText" placeholder="Cole o modelo aqui..."></textarea>
+        <label style="display:block; margin-top:20px;">2. Evoluções (.txt)</label>
+        <input type="file" id="fileInput" multiple accept=".txt" style="margin-top:10px;">
+    </div>
+    <div class="card">
+        <button class="btn btn-primary" id="btnGo">🚀 Processar Arquivos</button>
+        <div id="status"></div>
+        <button class="btn btn-success" id="btnZip" style="display:none">📥 Baixar ZIP</button>
+    </div>
+</div>
+
+<script>
+    // COLOQUE SUA CHAVE AQUI
+    const MINHA_CHAVE = "AIzaSyAuaKdXTRfZzuabGO4UupW2qj5EnQcbaG4";
+
+    let results = [];
+    const btnGo = document.getElementById('btnGo');
+    const status = document.getElementById('status');
+
+    btnGo.onclick = async () => {
+        const files = document.getElementById('fileInput').files;
+        const modelo = document.getElementById('modeloText').value;
+        if (!files.length || !modelo) return alert("Selecione arquivos e preencha o modelo.");
+
+        btnGo.disabled = true;
+        status.innerHTML = "Iniciando...";
+        results = [];
+
+        for (let i = 0; i < files.length; i++) {
+            status.innerHTML = `Processando ${i+1} de ${files.length}...`;
+            const text = await files[i].text();
+            
+            try {
+                // TENTATIVA COM V1BETA E NOME DE MODELO EXPLÍCITO
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MINHA_CHAVE}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Reorganize esta evolução médica conforme o modelo abaixo.\n\nMODELO:\n${modelo}\n\nEVOLUÇÃO:\n${text}` }] }]
+                    })
+                });
+
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error.message);
+                
+                results.push({ name: `REORG_${files[i].name}`, content: data.candidates[0].content.parts[0].text });
+            } catch (e) {
+                status.innerHTML = `<span style="color:red">Erro no arquivo ${files[i].name}: ${e.message}</span>`;
+                btnGo.disabled = false;
+                return;
+            }
+        }
+
+        status.innerHTML = "✅ Concluído!";
+        document.getElementById('btnZip').style.display = "block";
+        btnGo.disabled = false;
+    };
+
+    document.getElementById('btnZip').onclick = async () => {
+        const zip = new JSZip();
+        results.forEach(r => zip.file(r.name, r.content));
+        const blob = await zip.generateAsync({type:"blob"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "evolucoes.zip";
+        a.click();
+    };
+</script>
+</body>
+</html>
