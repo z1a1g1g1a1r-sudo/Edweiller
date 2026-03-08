@@ -2,97 +2,119 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>ReOrg Médico - Sistema Estável</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReOrg Médico PRO - Estável</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #0d1117; color: #e6edf3; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: #161b22; padding: 20px; border-radius: 8px; border: 1px solid #30363d; }
-        textarea { width: 100%; height: 150px; background: #010409; color: white; border: 1px solid #30363d; border-radius: 6px; margin: 10px 0; padding: 10px; }
-        .btn { cursor: pointer; border: none; padding: 12px; border-radius: 6px; font-weight: bold; width: 100%; margin-top: 10px; }
-        .btn-blue { background: #58a6ff; color: #0d1117; }
-        .btn-green { background: #238636; color: white; display: none; }
-        #status { margin-top: 15px; font-size: 13px; color: #8b949e; }
+        :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --blue: #58a6ff; --green: #238636; --text: #e6edf3; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        h2 { color: var(--blue); margin-top: 0; font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 12px; color: #8b949e; text-transform: uppercase; }
+        textarea { width: 100%; height: 200px; background: #010409; border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; margin-bottom: 20px; }
+        input[type="file"] { background: #0d1117; border: 1px solid var(--border); padding: 10px; width: 100%; border-radius: 6px; box-sizing: border-box; cursor: pointer; }
+        .btn { cursor: pointer; border: none; padding: 15px; border-radius: 6px; font-weight: bold; width: 100%; font-size: 13px; text-transform: uppercase; transition: 0.2s; margin-top: 10px; }
+        .btn-primary { background: var(--blue); color: #0d1117; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-success { background: var(--green); color: white; display: none; }
+        #status { margin-top: 15px; padding: 12px; border-radius: 6px; font-size: 13px; background: #010409; border-left: 4px solid var(--border); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>ReOrg Médico ⚡</h2>
-    
-    <label>1. Modelo de Referência</label>
-    <textarea id="modeloText" placeholder="Cole o modelo aqui..."></textarea>
-    
-    <label>2. Evoluções (.txt)</label>
-    <input type="file" id="fileInput" multiple accept=".txt" style="display:block; margin: 10px 0;">
+    <div class="card">
+        <h2>⚡ ReOrg Médico PRO</h2>
+        
+        <label>1. Modelo Padrão de Evolução</label>
+        <textarea id="modeloText" placeholder="Cole aqui o seu modelo de referência..."></textarea>
+        
+        <label>2. Selecionar Evoluções (.txt)</label>
+        <input type="file" id="fileInput" multiple accept=".txt">
+    </div>
 
-    <button class="btn btn-blue" id="btnRun">PROCESSAR AGORA</button>
-    <div id="status">Aguardando...</div>
-    <button class="btn btn-green" id="btnZip">BAIXAR ZIP</button>
+    <div class="card">
+        <div id="status">Aguardando arquivos e comando...</div>
+        <button class="btn btn-primary" id="btnRun">🚀 Iniciar Reorganização em Lote</button>
+        <button class="btn btn-success" id="btnZip">📥 Baixar Arquivos Reorganizados (.ZIP)</button>
+    </div>
 </div>
 
 <script>
-    // --- COLE SUA CHAVE EXATAMENTE AQUI ---
-    const MINHA_CHAVE = "AIzaSyAuaKdXTRfZzuabGO4UupW2qj5EnQcbaG4";
+    // CHAVE API INTEGRADA DIRETAMENTE
+    const KEY_BASE = "AIzaSyAuaKdXTRfZzuabGO4UupW2qj5EnQcbaG4";
 
     const btnRun = document.getElementById('btnRun');
+    const btnZip = document.getElementById('btnZip');
     const status = document.getElementById('status');
-    let results = [];
+    let resultsList = [];
 
     btnRun.onclick = async () => {
         const files = document.getElementById('fileInput').files;
         const modelo = document.getElementById('modeloText').value;
-        const apiKey = MINHA_CHAVE.trim(); // Remove espaços acidentais
 
-        if (!apiKey || apiKey.includes("COLE")) return alert("Insira a chave!");
-        if (!files.length || !modelo) return alert("Selecione arquivos e preencha o modelo.");
+        if (files.length === 0 || !modelo) {
+            alert("Por favor, selecione os arquivos e cole o modelo padrão.");
+            return;
+        }
 
         btnRun.disabled = true;
-        results = [];
+        btnZip.style.display = "none";
+        resultsList = [];
         
         for (let i = 0; i < files.length; i++) {
-            status.innerHTML = `Processando ${i+1}/${files.length}: ${files[i].name}`;
-            const text = await files[i].text();
+            const file = files[i];
+            status.innerHTML = `⚙️ Processando (${i+1}/${files.length}): <b>${file.name}</b>`;
             
             try {
-                // Usando o modelo genérico 'gemini-1.5-flash' que é o mais aceito
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const text = await file.text();
+                // Usando a versão v1 (Estável) e o modelo flash direto
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${KEY_BASE}`;
                 
-                const resp = await fetch(url, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `Reorganize conforme o modelo:\n\nMODELO:\n${modelo}\n\nTEXTO:\n${text}` }] }]
+                        contents: [{ parts: [{ text: `Aja como médico assistente. Reorganize a evolução abaixo seguindo rigorosamente o modelo fornecido.\n\nMODELO:\n${modelo}\n\nEVOLUÇÃO:\n${text}` }] }]
                     })
                 });
 
-                const data = await resp.json();
+                const data = await response.json();
 
-                if (resp.ok && data.candidates) {
-                    results.push({ name: `REORG_${files[i].name}`, content: data.candidates[0].content.parts[0].text });
+                if (response.ok && data.candidates && data.candidates[0].content) {
+                    resultsList.push({ 
+                        name: `REORG_${file.name}`, 
+                        content: data.candidates[0].content.parts[0].text 
+                    });
                 } else {
-                    throw new Error(data.error ? data.error.message : "Erro na API");
+                    const errorMsg = data.error ? data.error.message : "Resposta inesperada da API.";
+                    throw new Error(errorMsg);
                 }
-            } catch (e) {
-                status.innerHTML = `<span style="color:#f78166">Erro em ${files[i].name}: ${e.message}</span>`;
+
+            } catch (err) {
+                console.error(err);
+                status.innerHTML = `<span style="color:#f78166">❌ Erro no arquivo ${file.name}: ${err.message}</span>`;
                 btnRun.disabled = false;
                 return;
             }
         }
 
-        status.innerHTML = "✅ Tudo pronto!";
-        document.getElementById('btnZip').style.display = "block";
+        status.innerHTML = `<b style="color: var(--green)">✅ Concluído! ${resultsList.length} arquivos processados com sucesso.</b>`;
+        btnZip.style.display = "block";
         btnRun.disabled = false;
     };
 
-    document.getElementById('btnZip').onclick = async () => {
+    btnZip.onclick = async () => {
         const zip = new JSZip();
-        results.forEach(f => zip.file(f.name, f.content));
+        resultsList.forEach(f => zip.file(f.name, f.content));
         const blob = await zip.generateAsync({ type: "blob" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `Evolucoes.zip`;
+        a.download = `Evolucoes_Reorganizadas.zip`;
         a.click();
     };
 </script>
+
 </body>
 </html>
